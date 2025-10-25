@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sword Slashers</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Arial Black', sans-serif;
+            background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .container { width: 100%; max-width: 1200px; padding: 20px; }
+        .game-title {
+            text-align: center;
+            font-size: 3.5em;
+            color: #ffd700;
+            text-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
+            margin-bottom: 30px;
+        }
+        .menu-screen, .game-screen, .history-screen {
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+        }
+        .menu-buttons { display: flex; flex-direction: column; gap: 20px; align-items: center; }
+        .btn {
+            padding: 15px 50px;
+            font-size: 1.3em;
+            font-weight: bold;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            color: white;
+        }
+        .btn-start { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .btn:hover:not(:disabled) { transform: translateY(-3px); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .game-screen, .history-screen { display: none; }
+        .game-info { display: flex; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 15px; }
+        .info-box { background: rgba(0,0,0,0.5); padding: 12px 20px; border-radius: 10px; }
+        .arena {
+            background: linear-gradient(180deg, #1a1a2e 0%, #2d3561 50%, #1a1a2e 100%);
+            border-radius: 20px;
+            padding: 30px;
+            margin: 20px 0;
+            min-height: 500px;
+            position: relative;
+        }
+        .battle-arena {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            height: 450px;
+            padding: 20px;
+        }
+        .character-sprite { font-size: 8em; }
+        .health-bar {
+            width: 250px;
+            height: 30px;
+            background: rgba(0,0,0,0.8);
+            border-radius: 15px;
+            border: 3px solid #ffd700;
+            margin: 10px 0;
+        }
+        .health-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff0000 0%, #ff6b6b 50%, #ff0000 100%);
+            transition: width 0.6s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .battle-controls { display: flex; gap: 15px; justify-content: center; margin-top: 25px; }
+        .btn-attack { background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%); padding: 15px 40px; }
+        .btn-special { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); padding: 15px 40px; }
+        .btn-heal { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); padding: 15px 40px; }
+        .battle-log {
+            background: rgba(0,0,0,0.7);
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+            max-height: 130px;
+            overflow-y: auto;
+        }
+        .log-entry { margin: 5px 0; padding: 8px; border-left: 4px solid #ffd700; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="game-title">⚔️ SWORD SLASHERS ⚔️</h1>
+        
+        <div class="menu-screen" id="menuScreen">
+            <div class="menu-buttons">
+                <button class="btn btn-start" onclick="startGame()">⚔️ Start Game</button>
+                <button class="btn btn-start" onclick="showHistory()">📜 Battle History</button>
+                <button class="btn btn-start" onclick="exitGame()">🚪 Exit Game</button>
+            </div>
+        </div>
+
+        <div class="game-screen" id="gameScreen">
+            <div class="game-info">
+                <div class="info-box">🎯 Level: <span id="currentLevel">1</span> / 5</div>
+                <div class="info-box">💰 Gold: <span id="goldCount">0</span></div>
+                <div class="info-box">⚡ Energy: <span id="energyCount">5</span></div>
+                <div class="info-box">🏆 Wins: <span id="winCount">0</span></div>
+            </div>
+
+            <div class="arena">
+                <div class="battle-arena">
+                    <div>
+                        <div class="character-sprite" id="playerSprite">🗡️</div>
+                        <div style="text-align: center;">
+                            <div style="color: #ffd700; font-size: 1.5em;">⚔️ WARRIOR</div>
+                            <div class="health-bar">
+                                <div class="health-fill" id="playerHealth" style="width: 100%;">
+                                    <span id="playerHealthText">100/100</span>
+                                </div>
+                            </div>
+                            <div>ATK: <span id="playerAttack">20</span></div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="character-sprite" id="enemySprite">👹</div>
+                        <div style="text-align: center;">
+                            <div style="color: #ffd700; font-size: 1.5em;" id="enemyName">GOBLIN</div>
+                            <div class="health-bar">
+                                <div class="health-fill" id="enemyHealth" style="width: 100%;">
+                                    <span id="enemyHealthText">50/50</span>
+                                </div>
+                            </div>
+                            <div>ATK: <span id="enemyAttack">10</span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="battle-controls">
+                <button class="btn btn-attack" id="attackBtn" onclick="playerAttack()">⚔️ ATTACK</button>
+                <button class="btn btn-special" id="specialBtn" onclick="specialAttack()">💥 SPECIAL (3⚡)</button>
+                <button class="btn btn-heal" id="healBtn" onclick="healPlayer()">❤️ HEAL (2⚡)</button>
+            </div>
+
+            <div class="battle-log" id="battleLog"></div>
+
+            <div style="text-align: center; margin-top: 20px;">
+                <button class="btn btn-start" onclick="returnToMenu()">🏠 Return to Menu</button>
+            </div>
+        </div>
+
+        <div class="history-screen" id="historyScreen">
+            <h2 style="text-align: center; margin-bottom: 20px;">📜 Battle History</h2>
+            <div id="historyList" style="max-height: 400px; overflow-y: auto;"></div>
+            <div style="text-align: center; margin-top: 20px;">
+                <button class="btn btn-start" onclick="returnToMenu()">🏠 Back to Menu</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const state = {
+            level: 1,
+            playerMaxHP: 100,
+            playerHP: 100,
+            playerAttack: 20,
+            energy: 100,
+            gold: 0,
+            wins: 0,
+            animating: false,
+            history: [],
+            enemies: [
+                { name: 'GOBLIN', icon: '👹', hp: 50, attack: 10, gold: 10 },
+                { name: 'ORC', icon: '🧟', hp: 80, attack: 15, gold: 20 },
+                { name: 'KNIGHT', icon: '⚔️', hp: 120, attack: 20, gold: 30 },
+                { name: 'DRAGON', icon: '🐉', hp: 150, attack: 25, gold: 40 },
+                { name: 'DARK LORD', icon: '👿', hp: 200, attack: 30, gold: 100 }
+            ],
+            enemy: null
+        };
+
+        function startGame() {
+            state.level = 1;
+            state.playerHP = state.playerMaxHP;
+            state.energy = 100;
+            state.gold = 0;
+            state.wins = 0;
+            state.animating = false;
+            
+            document.getElementById('menuScreen').style.display = 'none';
+            document.getElementById('gameScreen').style.display = 'block';
+            document.getElementById('historyScreen').style.display = 'none';
+            document.getElementById('battleLog').innerHTML = '';
+            
+            loadEnemy();
+            updateUI();
+            addLog('⚔️ Battle begins!');
+        }
+
+        function loadEnemy() {
+            const e = state.enemies[state.level - 1];
+            state.enemy = { name: e.name, icon: e.icon, maxHP: e.hp, hp: e.hp, attack: e.attack, gold: e.gold };
+            document.getElementById('enemySprite').textContent = e.icon;
+            updateUI();
+            addLog(`🎯 ${e.name} appears!`);
+        }
+
+        function updateUI() {
+            document.getElementById('currentLevel').textContent = state.level;
+            document.getElementById('goldCount').textContent = state.gold;
+            document.getElementById('winCount').textContent = state.wins;
+            document.getElementById('energyCount').textContent = state.energy;
+            
+            const pPct = Math.max(0, (state.playerHP / state.playerMaxHP) * 100);
+            document.getElementById('playerHealth').style.width = pPct + '%';
+            document.getElementById('playerHealthText').textContent = `${Math.max(0, state.playerHP)}/${state.playerMaxHP}`;
+            document.getElementById('playerAttack').textContent = state.playerAttack;
+            
+            if (state.enemy) {
+                const ePct = Math.max(0, (state.enemy.hp / state.enemy.maxHP) * 100);
+                document.getElementById('enemyHealth').style.width = ePct + '%';
+                document.getElementById('enemyHealthText').textContent = `${Math.max(0, state.enemy.hp)}/${state.enemy.maxHP}`;
+                document.getElementById('enemyName').textContent = state.enemy.name;
+                document.getElementById('enemyAttack').textContent = state.enemy.attack;
+            }
+
+            const disabled = state.animating || state.playerHP <= 0 || (state.enemy && state.enemy.hp <= 0);
+            document.getElementById('attackBtn').disabled = disabled;
+            document.getElementById('specialBtn').disabled = disabled || state.energy < 3;
+            document.getElementById('healBtn').disabled = disabled || state.energy < 2;
+        }
+
+        function playerAttack() {
+            if (state.animating || state.playerHP <= 0 || state.enemy.hp <= 0) return;
+            state.animating = true;
+            updateUI();
+            
+            setTimeout(() => {
+                const dmg = state.playerAttack + Math.floor(Math.random() * 10);
+                state.enemy.hp = Math.max(0, state.enemy.hp - dmg);
+                addLog(`⚔️ You deal ${dmg} damage!`);
+                updateUI();
+                
+                setTimeout(() => {
+                    if (state.enemy.hp <= 0) {
+                        enemyDefeated();
+                    } else {
+                        enemyAttack();
+                    }
+                }, 500);
+            }, 300);
+        }
+
+        function specialAttack() {
+            if (state.energy < 3 || state.animating || state.playerHP <= 0 || state.enemy.hp <= 0) return;
+            state.animating = true;
+            state.energy -= 3;
+            updateUI();
+            
+            setTimeout(() => {
+                const dmg = state.playerAttack * 2 + Math.floor(Math.random() * 20);
+                state.enemy.hp = Math.max(0, state.enemy.hp - dmg);
+                addLog(`💥 SPECIAL! ${dmg} damage!`);
+                updateUI();
+                
+                setTimeout(() => {
+                    if (state.enemy.hp <= 0) {
+                        enemyDefeated();
+                    } else {
+                        enemyAttack();
+                    }
+                }, 500);
+            }, 300);
+        }
+
+        function healPlayer() {
+            if (state.energy < 2 || state.animating) return;
+            state.animating = true;
+            state.energy -= 2;
+            
+            const heal = 30;
+            state.playerHP = Math.min(state.playerMaxHP, state.playerHP + heal);
+            addLog(`❤️ Healed ${heal} HP!`);
+            updateUI();
+            
+            setTimeout(() => {
+                enemyAttack();
+            }, 500);
+        }
+
+        function enemyAttack() {
+            if (state.playerHP <= 0) return;
+            
+            setTimeout(() => {
+                const dmg = state.enemy.attack + Math.floor(Math.random() * 5);
+                state.playerHP = Math.max(0, state.playerHP - dmg);
+                addLog(`👹 ${state.enemy.name} attacks for ${dmg} damage!`);
+                updateUI();
+                
+                setTimeout(() => {
+                    state.animating = false;
+                    if (state.playerHP <= 0) {
+                        gameOver();
+                    } else {
+                        updateUI();
+                    }
+                }, 500);
+            }, 300);
+        }
+
+        function enemyDefeated() {
+            state.gold += state.enemy.gold;
+            state.wins++;
+            state.energy = Math.min(100, state.energy + 10);
+            addLog(`🏆 Victory! +${state.enemy.gold} gold, +10 energy!`);
+            
+            state.history.push({
+                enemy: state.enemy.name,
+                level: state.level,
+                result: 'Victory',
+                gold: state.enemy.gold
+            });
+            
+            if (state.level < 5) {
+                state.level++;
+                setTimeout(() => {
+                    state.animating = false;
+                    loadEnemy();
+                }, 2000);
+            } else {
+                setTimeout(() => {
+                    addLog('🎉 YOU WIN! All enemies defeated!');
+                    state.animating = false;
+                    updateUI();
+                }, 1500);
+            }
+            updateUI();
+        }
+
+        function gameOver() {
+            addLog('💀 Defeated! Game Over.');
+            state.history.push({
+                enemy: state.enemy.name,
+                level: state.level,
+                result: 'Defeat',
+                gold: 0
+            });
+        }
+
+        function addLog(msg) {
+            const log = document.getElementById('battleLog');
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            entry.textContent = msg;
+            log.insertBefore(entry, log.firstChild);
+        }
+
+        function showHistory() {
+            document.getElementById('menuScreen').style.display = 'none';
+            document.getElementById('gameScreen').style.display = 'none';
+            document.getElementById('historyScreen').style.display = 'block';
+            
+            const list = document.getElementById('historyList');
+            if (state.history.length === 0) {
+                list.innerHTML = '<div style="text-align:center; padding:20px;">No battles yet!</div>';
+            } else {
+                list.innerHTML = state.history.map((h, i) => 
+                    `<div style="background:rgba(0,0,0,0.5); padding:15px; margin:10px 0; border-radius:10px;">
+                        <strong>Battle ${i + 1}:</strong> ${h.enemy} (Level ${h.level}) - ${h.result}
+                        ${h.gold > 0 ? ` +${h.gold} gold` : ''}
+                    </div>`
+                ).join('');
+            }
+        }
+
+        function returnToMenu() {
+            document.getElementById('menuScreen').style.display = 'block';
+            document.getElementById('gameScreen').style.display = 'none';
+            document.getElementById('historyScreen').style.display = 'none';
+        }
+
+        function exitGame() {
+            alert('Thanks for playing!');
+        }
+    </script>
+</body>
+</html>
